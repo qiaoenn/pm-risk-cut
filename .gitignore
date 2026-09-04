@@ -1,0 +1,6 @@
+config.toml
+evidence/
+__pycache__/
+*.pyc
+risk_state.db
+.Rhistory

@@ -1,0 +1,53 @@
+# Copy to config.toml and fill in.  config.toml is gitignored.
+
+[gateway]
+host = "127.0.0.1"
+
+# PAPER PORTS ONLY.  The probe hard-refuses anything else.
+#   7497  Trader Workstation, paper
+#   4002  IB Gateway,         paper
+port = 7497
+
+# clientId 0 is deliberate, not arbitrary.  Only clientId 0 receives orders
+# that were placed manually in TWS rather than through the API.  Since the
+# whole point of Phase 0 is to find out whether the master can see and cancel
+# an order a PM placed by hand, connecting as anything else would bias the
+# answer toward "no" for the wrong reason.
+#
+# If clientId 0 is already taken, the probe will say so.  Pick another id and
+# note in the evidence that manual-order visibility was NOT tested.
+client_id = 0
+
+[accounts]
+# Every sub-account the probe is allowed to touch, listed explicitly.
+# There is no "all managed accounts" mode.  If it is not on this list, the
+# probe will not cancel or close anything in it.
+targets = ["DU1234567"]
+
+# Optional.  Only needed once we get past Phase 0, but harmless to set now.
+# [capital]
+# DU1234567 = 100000
+
+[risk]
+# The rule: NLV must not fall below baseline * (1 - drawdown_pct).
+drawdown_pct = 0.05
+
+# Warning tier. Notification only, no restriction.
+warn_pct = 0.03
+
+# Seconds between NLV polls.
+poll_seconds = 15
+
+# Consecutive breaching polls required before the cut fires. Guards against a
+# single bad print flattening a book.
+confirm_samples = 3
+
+# A one-poll NLV drop larger than this is treated as bad data rather than a
+# loss, and does not count toward confirmation. A stale mark can collapse NLV
+# without a single trade happening; cutting on that is unrecoverable.
+max_jump_pct = 0.02
+
+# How often to re-sweep a LOCKED account: finish positions whose market was
+# closed at cut time, and flatten anything a PM has re-entered. Without this a
+# cut that deferred positions never completes.
+police_seconds = 300
