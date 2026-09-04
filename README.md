@@ -184,11 +184,16 @@ deferred to a closed market would silently become the PM's again. Finish it with
 actually in the account. Reopening at 500k while the account holds 950k makes
 the floor fiction.
 
-**4. Reopen.**
+**4. Reopen.** For the usual case — the PM continues on whatever the cut left
+them — `current` reads the post-cut NLV so no figure is transcribed by hand:
 
 ```bash
-riskctl.py reopen --account DUQ782853 --baseline 950000 --arm
+riskctl.py reopen --account DUQ782853 --baseline current --arm   # continue on what's left
+riskctl.py reopen --account DUQ782853 --baseline 500000 --arm    # re-allocated figure
 ```
+
+Run it wherever the code and a Gateway connection live — your Mac now, the EC2
+box later. `reopen` connects read-only to check for leftover positions.
 
 The floor recomputes to 0.95 × the new baseline — so a PM stopped out at 950k
 and reopened there has a new floor of 902,500, not their old one.

@@ -249,8 +249,20 @@ def cmd_reopen(cfg, run, args):
     try:
         left = cut_engine.open_positions(ib, args.account)
         orders = cut_engine.working_orders(ib, args.account)
+        # "current" is the common case: the PM continues on whatever the cut
+        # left them, so the baseline is simply the post-cut NLV. Reading it
+        # here avoids transcribing a number by hand into a command that sets
+        # someone's stop-loss.
+        nlv = monitor.read_nlv(ib).get(args.account)
     finally:
         ib.disconnect()
+
+    if str(args.baseline).lower() == "current":
+        if nlv is None:
+            sys.exit(f"No NLV reported for {args.account}; pass an explicit "
+                     f"--baseline instead.")
+        args.baseline = nlv
+        print(f"  baseline = current NLV {nlv:,.2f}")
 
     if left or orders:
         print(f"\n  !! {len(left)} position(s) and {len(orders)} working "
@@ -308,7 +320,9 @@ def main():
     a.add_argument("--arm", action="store_true")
 
     o = sub.add_parser("reopen")
-    o.add_argument("--account", required=True); o.add_argument("--baseline", required=True)
+    o.add_argument("--account", required=True)
+    o.add_argument("--baseline", required=True,
+                   help="'current' to continue on what the cut left them, or a number")
     o.add_argument("--arm", action="store_true")
     o.add_argument("--force", action="store_true",
                    help="reopen even with positions still open (the PM keeps them)")
