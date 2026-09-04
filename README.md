@@ -162,3 +162,46 @@ configured and verified.
 - **Bypass Order Precautions for API Orders must be ON**
 - `riskctl.py health` on a cron; exit 1 means the stop-loss is not running
 - Market data subscriptions on the master before trusting execution quality
+
+## Reopening a locked account
+
+Locking is deliberate — reopening is a decision you make, not a timer.
+
+**1. Check the cut actually finished.** `reopen` refuses if positions or working
+orders remain, because reopening stops the police sweep: anything the cut
+deferred to a closed market would silently become the PM's again. Finish it with
+`cut --account X --arm`, or pass `--force` if you intend them to keep it.
+
+**2. Decide the new allocation.** This is the real decision. Three shapes:
+
+| | Do this |
+|---|---|
+| Continue on what's left | Reopen at their post-cut NLV |
+| Reduced size | Transfer cash **out** to master first, then reopen at the lower figure |
+| Topped back up | Transfer cash **in** first, then reopen at the higher figure |
+
+**3. Make the number match the cash.** The baseline must equal the capital
+actually in the account. Reopening at 500k while the account holds 950k makes
+the floor fiction.
+
+**4. Reopen.**
+
+```bash
+riskctl.py reopen --account DUQ782853 --baseline 950000 --arm
+```
+
+The floor recomputes to 0.95 × the new baseline — so a PM stopped out at 950k
+and reopened there has a new floor of 902,500, not their old one.
+
+**5. Show them the record.** Every enroll, status change and adjustment is in the
+`audit` table of `risk_state.db`, timestamped.
+
+### Cash transfers while a PM is active
+
+```bash
+riskctl.py adjust --account DUQ782853 --delta 50000 --reason "Q3 top-up" --arm
+```
+
+A deposit that does not raise the baseline reads as a gain and lifts the floor
+out of reach; a withdrawal that does not lower it reads as a loss and fires a
+cut that should never have happened. Record every transfer.
