@@ -9,7 +9,6 @@ reopening is a re-allocation that resets the floor to 0.93 × the new number.
 | Level | on $1,000,000 | Action |
 |---|---|---|
 | −3% | 970,000 | Warning *(not built — deferred)* |
-| ? | ? | IBKR native restriction → closing orders only *(unavailable, see below; rung not yet set)* |
 | −7% | 930,000 | Flatten + lock |
 
 ## Setup
@@ -148,7 +147,8 @@ reopen with baseline reset, heartbeat.
 
 **Not done:** induced rejects, NLV staleness detection, Telegram, EC2
 deployment, Layer 1, and options / short-side unwind (no such positions exist in
-the test book, so the two highest-priority rungs of the ladder are untested).
+the test book, so the two highest-priority steps of the unwind order are
+untested).
 
 **Go/no-go:** no-go on the demo structure — a stop-out cannot be enforced there,
 only cleaned up after. Go on a real institutional account once Layer 1 is
