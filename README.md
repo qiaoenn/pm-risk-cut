@@ -8,7 +8,7 @@ reopening is a re-allocation that resets the floor to 0.93 × the new number.
 
 | Level | on $1,000,000 | Action |
 |---|---|---|
-| −3.5% | 965,000 | Warning *(not built — deferred)* |
+| −3.5% | 965,000 | Telegram warning, once per SGT day while below |
 | −7% | 930,000 | Flatten + lock |
 
 ## Setup
@@ -32,6 +32,7 @@ riskctl.py cut --account DUQ782853 --arm       # real
 riskctl.py watch                               # detect + report only
 riskctl.py watch --arm                         # detect + CUT   <- production mode
 riskctl.py health --max-age 120                # exit 1 = stop-loss NOT running
+riskctl.py notify-test --to both               # prove Telegram delivery
 riskctl.py reopen --account DUQ782853 --baseline 950000 --arm
 ```
 
@@ -162,6 +163,31 @@ configured and verified.
 - **Bypass Order Precautions for API Orders must be ON**
 - `riskctl.py health` on a cron; exit 1 means the stop-loss is not running
 - Market data subscriptions on the master before trusting execution quality
+
+## Telegram alerts
+
+Three events, two destinations:
+
+| Event | Goes to |
+|---|---|
+| −3.5% warning | PM group |
+| 7% stop-out, with what closed / deferred / failed | PM group |
+| Watchdog dead | your private chat, **not** the group |
+
+The warning fires **once per Singapore calendar day and repeats daily** while
+the account stays below the line — the point is to prompt action, not to file a
+single alert. It re-arms on reopen.
+
+Configure `bot_token`, `group_chat_id` and `alert_chat_id` under `[telegram]`
+in `config.toml` (gitignored — the token never reaches the repo), then
+`riskctl.py notify-test --to both`.
+
+Optional `[labels]` maps account codes to PM names, so messages read
+`DUQ782853 (Wei Ming)` instead of a bare code.
+
+Delivery failure can never take down the watchdog: every send is wrapped, logs
+to stderr, and returns rather than raising. A Telegram outage is inconvenient;
+it is not a reason to stop enforcing a stop-loss.
 
 ## Reopening a locked account
 

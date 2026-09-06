@@ -29,6 +29,10 @@ def _conn():
         enrolled  TEXT NOT NULL,
         locked_at TEXT,
         note      TEXT)""")
+    # Added after the table shipped, so migrate rather than assume.
+    cols = {r[1] for r in c.execute("PRAGMA table_info(accounts)")}
+    if "last_warned" not in cols:
+        c.execute("ALTER TABLE accounts ADD COLUMN last_warned TEXT")
     c.execute("""CREATE TABLE IF NOT EXISTS heartbeat (
         id      INTEGER PRIMARY KEY CHECK (id = 1),
         ts      TEXT NOT NULL,
@@ -61,7 +65,7 @@ def enroll(account: str, baseline: float, note: str = "") -> None:
                      ON CONFLICT(account) DO UPDATE SET
                        baseline=excluded.baseline, status='ACTIVE',
                        enrolled=excluded.enrolled, locked_at=NULL,
-                       note=excluded.note""",
+                       note=excluded.note, last_warned=NULL""",
                   (account, float(baseline), ACTIVE, _now(), note))
     audit(account, "ENROLL", f"baseline={baseline:,.2f} {note}")
 
@@ -90,6 +94,22 @@ def set_status(account: str, status: str, detail: str = "") -> None:
         c.execute("UPDATE accounts SET status=?, locked_at=? WHERE account=?",
                   (status, _now() if status == LOCKED else None, account))
     audit(account, f"STATUS_{status}", detail)
+
+
+def mark_warned(account: str, day: str) -> None:
+    with _conn() as c:
+        c.execute("UPDATE accounts SET last_warned=? WHERE account=?",
+                  (day, account))
+    audit(account, "WARNED", day)
+
+
+def warned_today(row, day: str) -> bool:
+    """One warning per Singapore calendar day, repeating while still below.
+
+    Not a one-shot: a PM sitting at -4% for a week should hear about it every
+    day, because the point is to prompt action, not to file a single alert.
+    """
+    return (row["last_warned"] if "last_warned" in row.keys() else None) == day
 
 
 def get(account: str):

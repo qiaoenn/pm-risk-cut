@@ -33,7 +33,7 @@ targets = ["DU1234567"]
 drawdown_pct = 0.07
 
 # Warning tier. Notification only, no restriction.
-warn_pct = 0.03
+warn_pct = 0.035
 
 # Seconds between NLV polls.
 poll_seconds = 15
@@ -51,3 +51,17 @@ max_jump_pct = 0.02
 # closed at cut time, and flatten anything a PM has re-entered. Without this a
 # cut that deferred positions never completes.
 police_seconds = 300
+
+[telegram]
+# From @BotFather. This is a credential -- it lives here, never in the repo.
+bot_token = ""
+
+# The PM group chat. Negative number, e.g. -1001234567890.
+# Get it by sending "/start@your_bot_username" in the group, then reading
+# https://api.telegram.org/bot<TOKEN>/getUpdates
+# Bots have privacy mode on, so the message must mention the bot by name.
+group_chat_id = ""
+
+# Your 1:1 chat with the bot, for deadman alerts that should not go to the
+# group. Positive number.
+alert_chat_id = ""

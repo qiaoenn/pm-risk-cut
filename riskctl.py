@@ -20,6 +20,7 @@ from pathlib import Path
 import cut_engine
 import guards
 import monitor
+import notify
 import probe
 import reconcile
 import state
@@ -61,7 +62,7 @@ def cmd_status(cfg, run, args):
         ib.disconnect()
 
 
-def _do_cut(ib, acct, run, *, dry_run):
+def _do_cut(ib, acct, run, *, dry_run, cfg=None):
     before = reconcile.snapshot(ib, acct)
     run.log("snapshot_before", **before)
     if not dry_run:
@@ -92,6 +93,11 @@ def _do_cut(ib, acct, run, *, dry_run):
 
     state.set_status(acct, state.LOCKED,
                      f"cut complete; {len(rec['still_open'])} residual")
+    row = state.get(acct)
+    baseline = float(row["baseline"]) if row else float("nan")
+    notify.send(cfg, notify.stop_text(
+        cfg, acct, report, after["nlv"], baseline,
+        (after["nlv"] / baseline - 1.0) if baseline else 0.0))
     print(f"\n  {acct} is now LOCKED. Reopen with:")
     print(f"     python riskctl.py reopen --account {acct} --baseline <new capital>")
     return report
@@ -107,7 +113,7 @@ def cmd_cut(cfg, run, args):
                      f"so no floor to justify a cut.")
         print(f"\n--- Cut {args.account} "
               f"{'(DRY RUN)' if not args.arm else '(ARMED)'} ---")
-        _do_cut(ib, args.account, run, dry_run=not args.arm)
+        _do_cut(ib, args.account, run, dry_run=not args.arm, cfg=cfg)
         if not args.arm:
             print("\n  Dry run only. Re-run with --arm to place orders.")
         print(f"\nEvidence: {run}")
@@ -166,18 +172,25 @@ def cmd_watch(cfg, run, args):
                     continue
                 last_nlv[acct] = r["nlv"]
 
-                if lvl == monitor.WARN and r["status"] != state.WARNED:
-                    state.set_status(acct, state.WARNED, f"dd={r['drawdown']:.2%}")
-                    run.log("warn", **r)
-                    print(f"  WARN {acct} {r['drawdown']:.2%} "
-                          f"(headroom {r['headroom']:,.0f})")
+                if lvl == monitor.WARN:
+                    today = notify.today_sgt()
+                    if not state.warned_today(state.get(acct), today):
+                        state.set_status(acct, state.WARNED,
+                                         f"dd={r['drawdown']:.2%}")
+                        state.mark_warned(acct, today)
+                        run.log("warn", day=today, **r)
+                        sent = notify.send(cfg, notify.warn_text(
+                            cfg, r, float(risk.get("drawdown_pct", 0.07))))
+                        print(f"  WARN {acct} {r['drawdown']:.2%} "
+                              f"(headroom {r['headroom']:,.0f})"
+                              f"{'  [telegram sent]' if sent else ''}")
 
                 if monitor.confirm(streak, acct, lvl, needed):
                     run.log("breach_confirmed", **r)
                     print(f"\n  *** BREACH {acct} NLV {r['nlv']:,.2f} <= floor "
                           f"{r['floor']:,.2f} ({r['drawdown']:.2%}) ***")
                     if args.arm:
-                        _do_cut(ib, acct, run, dry_run=False)
+                        _do_cut(ib, acct, run, dry_run=False, cfg=cfg)
                     else:
                         print("  detect-only: no orders placed. "
                               "Re-run `watch --arm` to cut automatically.")
@@ -208,9 +221,24 @@ def cmd_health(cfg, run, args):
     print(f"  last heartbeat  {ts}  ({age:,.0f}s ago)")
     print(f"  detail          {detail}")
     if age > limit:
+        notify.send(cfg, notify.deadman_text(age, ts), to="alert")
         sys.exit(f"\nSTALE: no heartbeat for {age:,.0f}s (limit {limit:,.0f}s). "
                  f"THE STOP-LOSS IS NOT RUNNING.")
     print(f"  OK (limit {limit:,.0f}s)")
+
+
+def cmd_notify_test(cfg, run, args):
+    """Prove delivery end to end without waiting for a real breach."""
+    if not notify.configured(cfg):
+        sys.exit("No bot_token in [telegram] -- nothing to test.")
+    sample = {"account": "DUQ782853", "nlv": 962_150.0, "floor": 930_000.0,
+              "headroom": 32_150.0, "drawdown": -0.038}
+    dd = float(cfg["risk"]["drawdown_pct"])
+    targets = ["group", "alert"] if args.to == "both" else [args.to]
+    for t in targets:
+        text = (notify.deadman_text(372, "2026-09-05T14:32:00+08:00")
+                if t == "alert" else notify.warn_text(cfg, sample, dd))
+        print(f"  {t:<6} -> {'sent' if notify.send(cfg, text, to=t) else 'FAILED'}")
 
 
 def cmd_adjust(cfg, run, args):
@@ -312,6 +340,9 @@ def main():
     h.add_argument("--max-age", default=120,
                    help="seconds before the heartbeat counts as stale")
 
+    n = sub.add_parser("notify-test", help="send a sample message to Telegram")
+    n.add_argument("--to", choices=["group", "alert", "both"], default="both")
+
     a = sub.add_parser("adjust", help="record a cash transfer in or out")
     a.add_argument("--account", required=True)
     a.add_argument("--delta", required=True,
@@ -336,7 +367,8 @@ def main():
                      "config.example.toml.")
         {"enroll": cmd_enroll, "status": cmd_status, "cut": cmd_cut,
          "watch": cmd_watch, "reopen": cmd_reopen,
-         "adjust": cmd_adjust, "health": cmd_health}[args.cmd](cfg, run, args)
+         "adjust": cmd_adjust, "health": cmd_health,
+         "notify-test": cmd_notify_test}[args.cmd](cfg, run, args)
     except guards.GuardFailure as e:
         run.log("guard_failure", message=str(e))
         sys.exit(f"\n{e}\n")
