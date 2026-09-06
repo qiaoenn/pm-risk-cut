@@ -24,20 +24,42 @@ and **Global Configuration → API → Bypass Order Precautions for API Orders O
 
 ## Use
 
+**The stop-loss itself.** This runs continuously; everything else supports it.
+
 ```bash
-riskctl.py enroll --all --baseline current     # or --baseline 100000
-riskctl.py status                              # NLV vs floor, all accounts
-riskctl.py cut --account DUQ782853             # dry run
-riskctl.py cut --account DUQ782853 --arm       # real
-riskctl.py watch                               # detect + report only
-riskctl.py watch --arm                         # detect + CUT   <- production mode
-riskctl.py health --max-age 120                # exit 1 = stop-loss NOT running
-riskctl.py notify-test --to both               # prove Telegram delivery
-riskctl.py reopen --account DUQ782853 --baseline 950000 --arm
+riskctl.py watch --arm        # poll, warn at 3.5%, liquidate + lock at 7%
+riskctl.py watch              # same detection, read-only -- cannot trade
 ```
 
-`watch` without `--arm` connects read-only and physically cannot trade.
-Nothing that changes an account runs without `--arm`.
+**Set up, and after any re-allocation.** An account that is not enrolled is not
+monitored at all.
+
+```bash
+riskctl.py enroll --all --baseline current      # snapshot today's NLV
+riskctl.py enroll --account DUQ782853 --baseline 100000
+```
+
+**Looking at things.** All read-only.
+
+```bash
+riskctl.py status                     # NLV vs floor, headroom, flags
+riskctl.py health --max-age 120       # for cron: exit 1 = stop-loss NOT running
+riskctl.py notify-test --to both      # prove Telegram before it matters
+```
+
+**Operator actions.**
+
+```bash
+riskctl.py reopen --account DUQ782853 --baseline current --arm   # after a stop-out
+riskctl.py adjust --account DUQ782853 --delta 50000 --arm        # cash moved in/out
+riskctl.py cut --account DUQ782853 --arm                         # manual liquidation
+```
+
+`cut` is rarely needed by hand — `watch --arm` fires it automatically. It is for
+testing, and for finishing a cut that deferred positions to a closed market.
+
+Nothing that changes an account runs without `--arm`; every such command prints
+a dry run and refuses first.
 
 ## Files
 
