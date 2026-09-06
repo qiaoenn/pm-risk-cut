@@ -8,7 +8,7 @@ reopening is a re-allocation that resets the floor to 0.93 × the new number.
 
 | Level | on $1,000,000 | Action |
 |---|---|---|
-| −3% | 970,000 | Warning *(not built — deferred)* |
+| −3.5% | 970,000 | Warning *(not built — deferred)* |
 | −7% | 930,000 | Flatten + lock |
 
 ## Setup
