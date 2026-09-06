@@ -67,7 +67,7 @@ def assess(row, nlv: float, drawdown_pct: float, warn_pct: float) -> dict:
 
 def evaluate(ib, cfg) -> list:
     risk = cfg.get("risk", {})
-    dd = float(risk.get("drawdown_pct", 0.05))
+    dd = float(risk.get("drawdown_pct", 0.07))
     warn = float(risk.get("warn_pct", 0.03))
     nlv = read_nlv(ib)
     return [assess(r, nlv[r["account"]], dd, warn)

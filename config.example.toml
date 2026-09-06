@@ -30,7 +30,7 @@ targets = ["DU1234567"]
 
 [risk]
 # The rule: NLV must not fall below baseline * (1 - drawdown_pct).
-drawdown_pct = 0.05
+drawdown_pct = 0.07
 
 # Warning tier. Notification only, no restriction.
 warn_pct = 0.03

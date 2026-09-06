@@ -1,16 +1,16 @@
-# PM 5% Drawdown Cut
+# PM 7% Drawdown Cut
 
 Risk control for an IBKR institutional (STL) master with PM sub-accounts.
 
-**The rule:** a PM's NLV must never fall below `0.95 × allocated capital`. On
+**The rule:** a PM's NLV must never fall below `0.93 × allocated capital`. On
 breach the account is fully flattened and locked until manually reopened —
-reopening is a re-allocation that resets the floor to 0.95 × the new number.
+reopening is a re-allocation that resets the floor to 0.93 × the new number.
 
 | Level | on $1,000,000 | Action |
 |---|---|---|
 | −3% | 970,000 | Warning *(not built — deferred)* |
-| −4% | 960,000 | IBKR native restriction → closing orders only *(unavailable, see below)* |
-| −5% | 950,000 | Flatten + lock |
+| ? | ? | IBKR native restriction → closing orders only *(unavailable, see below; rung not yet set)* |
+| −7% | 930,000 | Flatten + lock |
 
 ## Setup
 
@@ -195,8 +195,8 @@ riskctl.py reopen --account DUQ782853 --baseline 500000 --arm    # re-allocated 
 Run it wherever the code and a Gateway connection live — your Mac now, the EC2
 box later. `reopen` connects read-only to check for leftover positions.
 
-The floor recomputes to 0.95 × the new baseline — so a PM stopped out at 950k
-and reopened there has a new floor of 902,500, not their old one.
+The floor recomputes to 0.93 × the new baseline — so a PM stopped out at 930k
+and reopened there has a new floor of 864,900, not their old one.
 
 **5. Show them the record.** Every enroll, status change and adjustment is in the
 `audit` table of `risk_state.db`, timestamped.
