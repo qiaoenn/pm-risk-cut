@@ -95,9 +95,14 @@ def _do_cut(ib, acct, run, *, dry_run, cfg=None):
                      f"cut complete; {len(rec['still_open'])} residual")
     row = state.get(acct)
     baseline = float(row["baseline"]) if row else float("nan")
-    notify.send(cfg, notify.stop_text(
+    # Say whether it went out. A stop-out nobody was told about is a
+    # different incident from one they were, and the console should not be
+    # silent about which happened.
+    sent = notify.send(cfg, notify.stop_text(
         cfg, acct, report, after["nlv"], baseline,
         (after["nlv"] / baseline - 1.0) if baseline else 0.0))
+    run.log("stop_notified", account=acct, sent=sent)
+    print(f"  telegram: {'stop-out sent' if sent else 'NOT SENT -- tell the PM manually'}")
     print(f"\n  {acct} is now LOCKED. Reopen with:")
     print(f"     python riskctl.py reopen --account {acct} --baseline <new capital>")
     return report

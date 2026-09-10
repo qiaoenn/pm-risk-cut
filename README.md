@@ -168,7 +168,12 @@ multi-session deferral, lock, police sweep, crash-mid-cut recovery (no
 double-sell), unattended `watch --arm` trigger, reconciliation to the cent,
 reopen with baseline reset, heartbeat.
 
-**Not done:** induced rejects, NLV staleness detection, Telegram, EC2
+Telegram verified live 2026-09-10 through the real trigger path: baseline
+moved to −4.50% produced one warning to the group and no cut; moved to −7.50%
+produced three-sample confirmation, liquidation of four US positions,
+reconciliation tying to the cent, the stop-out message, and the lock.
+
+**Not done:** induced rejects, NLV staleness detection, EC2
 deployment, Layer 1, and options / short-side unwind (no such positions exist in
 the test book, so the two highest-priority steps of the unwind order are
 untested).
